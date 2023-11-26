@@ -7,6 +7,7 @@ def import_students_data():
     client = pymongo.MongoClient(MONGODB_URI)
     db = client[DATABASE_NAME]
     collection = db[COLLECTION_NAME]
+    students_data = {}
 
     # Read data from the text file
     with open(TEXT_FILE_PATH, 'r') as file:
@@ -14,24 +15,35 @@ def import_students_data():
             # Split the line into fields using pipe as the separator
             fields = line.strip().split('|')
 
-            # Create a dictionary for the student data
-            student_data = {
-                "studentId": fields[0],
-                "firstName": fields[1],
-                "lastName": fields[2],
-                "age": int(fields[3]),
-                "subjects": [
-                    {
-                        "subjectId": fields[4],
-                        "subjectName": fields[5],
-                        "marks": int(fields[6])
-                    },
-                    # Add more subjects if needed
-                ]
-            }
+            student_id = fields[0]
 
-            # Insert the student data into MongoDB
-            collection.insert_one(student_data)
+            # Check if the student already exists in the dictionary
+            if student_id in students_data:
+                # If the student exists, append the new subject to the subjects list
+                students_data[student_id]["subjects"].append({
+                    "subjectId": fields[4],
+                    "subjectName": fields[5],
+                    "marks": int(fields[6])
+                })
+            else:
+                # If the student doesn't exist, create a new entry in the dictionary
+                students_data[student_id] = {
+                    "studentId": student_id,
+                    "firstName": fields[1],
+                    "lastName": fields[2],
+                    "age": int(fields[3]),
+                    "subjects": [
+                        {
+                            "subjectId": fields[4],
+                            "subjectName": fields[5],
+                            "marks": int(fields[6])
+                        }
+                    ]
+                }
+
+    # Insert student data into MongoDB
+    for student_data in students_data.values():
+        collection.insert_one(student_data)
 
     # Close the MongoDB connection
     client.close()
